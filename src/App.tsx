@@ -7,7 +7,6 @@ import { TopBar } from './components/NewTopBar';
 import { AgentCard } from './components/NewAgentCard';
 import { ActivityCard } from './components/NewActivityCard';
 import { DecisionInspector } from './components/NewDecisionInspector';
-import type { Agent, AgentAction } from './types/agent.types';
 
 function App(): JSX.Element {
   const socket = useAgentSocket();
@@ -16,8 +15,6 @@ function App(): JSX.Element {
   const actions = useAgentStore((s) => s.actions);
   const selectedActionId = useAgentStore((s) => s.selectedActionId);
   const openDecisionReplay = useAgentStore((s) => s.openDecisionReplay);
-  const closeDecisionReplay = useAgentStore((s) => s.closeDecisionReplay);
-  const showFeedback = useAgentStore((s) => s.showFeedback);
   const feedbackMessage = useAgentStore((s) => s.feedbackMessage);
   const feedbackTone = useAgentStore((s) => s.feedbackTone);
   const clearFeedback = useAgentStore((s) => s.clearFeedback);
@@ -38,7 +35,10 @@ function App(): JSX.Element {
   // Auto-select first agent
   useEffect(() => {
     if (agents.length > 0 && !selectedAgentId) {
-      setSelectedAgentId(agents[0].id);
+      const firstAgent = agents[0];
+      if (firstAgent) {
+        setSelectedAgentId(firstAgent.id);
+      }
     }
   }, [agents, selectedAgentId]);
 
