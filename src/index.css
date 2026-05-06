@@ -1,0 +1,287 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LIGHT MODE - Professional SaaS Palette */
+:root {
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --panel: #F3F4F6;
+  --border: #E5E7EB;
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --accent: #111827;
+  --risk-high: #DC2626;
+  --risk-medium: #D97706;
+  --risk-low: #16A34A;
+  --radius-card: 0.5rem;
+  font-family: Inter, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+  /* New semantic variables for Tailwind compatibility */
+  --background: #F7F8FA;
+  --foreground: #111827;
+  --card: #FFFFFF;
+  --card-foreground: #111827;
+  --panel: #F3F4F6;
+  --border-color: #E5E7EB;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+}
+
+/* DARK MODE - Professional Dark Palette */
+.dark {
+  --bg: #050505;
+  --surface: #0F0F10;
+  --panel: #161618;
+  --border: #232326;
+  --text-primary: #F5F5F5;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+  --accent: #E5E7EB;
+  --risk-high: #FCA5A5;
+  --risk-medium: #FDBA74;
+  --risk-low: #86EFAC;
+  --radius-card: 0.5rem;
+
+  /* New semantic variables for Tailwind compatibility */
+  --background: #050505;
+  --foreground: #F5F5F5;
+  --card: #0F0F10;
+  --card-foreground: #F5F5F5;
+  --panel: #161618;
+  --border-color: #232326;
+  --muted: #161618;
+  --muted-foreground: #A1A1AA;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-background {
+    background-color: hsl(var(--background) / <alpha-value>);
+  }
+
+  .text-foreground {
+    color: hsl(var(--foreground) / <alpha-value>);
+  }
+
+  .bg-card {
+    background-color: var(--card);
+  }
+
+  .text-card-foreground {
+    color: var(--card-foreground);
+  }
+
+  .bg-panel {
+    background-color: var(--panel);
+  }
+
+  .border-border {
+    border-color: var(--border-color);
+  }
+
+  .bg-muted {
+    background-color: var(--muted);
+  }
+
+  .text-muted-foreground {
+    color: var(--muted-foreground);
+  }
+
+  .bg-accent {
+    background-color: var(--accent);
+    opacity: 0.12;
+  }
+}
+
+
+/* Light mode: remap dark-mode-style utilities to semantic variables */
+:root:not(.dark) .bg-white\/5,
+:root:not(.dark) .bg-white\/10,
+:root:not(.dark) .bg-white\/15,
+:root:not(.dark) .bg-slate-50,
+:root:not(.dark) .bg-slate-100,
+:root:not(.dark) .bg-slate-950\/40,
+:root:not(.dark) .bg-slate-950\/60,
+:root:not(.dark) .bg-slate-950\/70,
+:root:not(.dark) .bg-slate-950\/80,
+:root:not(.dark) .bg-slate-950\/90,
+:root:not(.dark) .bg-slate-900\/70 {
+  background-color: var(--surface) !important;
+}
+
+:root:not(.dark) .border-white\/5,
+:root:not(.dark) .border-white\/10,
+:root:not(.dark) .border-white\/20,
+:root:not(.dark) .border-slate-200,
+:root:not(.dark) .border-slate-300 {
+  border-color: var(--border) !important;
+}
+
+:root:not(.dark) .text-white,
+:root:not(.dark) .text-slate-50,
+:root:not(.dark) .text-slate-100,
+:root:not(.dark) .text-slate-200,
+:root:not(.dark) .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+:root:not(.dark) .text-slate-300,
+:root:not(.dark) .text-slate-400,
+:root:not(.dark) .text-slate-500,
+:root:not(.dark) .text-slate-600,
+:root:not(.dark) .text-slate-700,
+:root:not(.dark) .text-slate-800 {
+  color: var(--text-secondary) !important;
+}
+
+/* Light mode: emerald → low risk (green) */
+:root:not(.dark) .border-emerald-200,
+:root:not(.dark) .border-emerald-300,
+:root:not(.dark) .bg-emerald-50,
+:root:not(.dark) .bg-emerald-100,
+:root:not(.dark) .bg-emerald-400,
+:root:not(.dark) .bg-emerald-500,
+:root:not(.dark) .text-emerald-700,
+:root:not(.dark) .text-emerald-800 {
+  /* Emerald used for low-risk/success - keep as-is, no override needed */
+}
+
+/* Light mode: amber → medium risk (orange) */
+:root:not(.dark) .border-amber-200,
+:root:not(.dark) .border-amber-300,
+:root:not(.dark) .border-amber-400,
+:root:not(.dark) .bg-amber-50,
+:root:not(.dark) .bg-amber-100,
+:root:not(.dark) .bg-amber-400,
+:root:not(.dark) .bg-amber-500,
+:root:not(.dark) .text-amber-100,
+:root:not(.dark) .text-amber-200,
+:root:not(.dark) .text-amber-800 {
+  /* Amber used for medium risk - keep as-is */
+}
+
+/* Light mode: rose/red → high risk (red) */
+:root:not(.dark) .border-rose-500,
+:root:not(.dark) .bg-rose-500,
+:root:not(.dark) .text-rose-300,
+:root:not(.dark) .border-red-200,
+:root:not(.dark) .bg-red-50,
+:root:not(.dark) .bg-red-100,
+:root:not(.dark) .bg-red-600,
+:root:not(.dark) .text-red-700,
+:root:not(.dark) .text-red-800 {
+  /* Red used for high risk - keep as-is */
+}
+
+/* Light mode: blue focus states - use accent sparingly */
+:root:not(.dark) .border-cyan-400,
+:root:not(.dark) .bg-cyan-400,
+:root:not(.dark) .text-cyan-100 {
+  /* Cyan/blue accents used for focus/selection - remap to main accent blue */
+}
+
+/* Light mode: text remappings for muted */
+:root:not(.dark) .text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text-primary);
+  transition: background-color 220ms ease, color 220ms ease;
+  overflow: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Professional radius system - clean, modern look */
+.rounded-3xl { border-radius: 0.5rem !important; }
+.rounded-2xl { border-radius: 0.5rem !important; }
+.rounded-full { border-radius: 0.375rem !important; }
+
+/* Semantic color classes */
+.bg-surface {
+  background-color: var(--surface) !important;
+}
+
+  .bg-panel {
+  background-color: var(--panel) !important;
+}
+
+.bg-bg {
+  background-color: var(--bg) !important;
+}
+
+.text-text-primary {
+  color: var(--text-primary) !important;
+}
+
+.text-text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.text-text-muted {
+  color: var(--text-muted) !important;
+}
+
+.border-weak {
+  border-color: var(--border) !important;
+}
+
+/* Remove ALL gradients - clean SaaS aesthetic */
+.bg-gradient-to-r,
+.bg-gradient-to-b,
+.bg-gradient-to-l,
+.bg-gradient-to-t {
+  background-image: none !important;
+}
+.bg-bg {
+  background: var(--bg) !important;
+}
+.border-weak {
+  border-color: var(--border) !important;
+}
+.text-text-primary {
+  color: var(--text-primary) !important;
+}
+.text-text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.bg-accent {
+  background-color: var(--accent) !important;
+}
+
+/* Utility for subtle accents used for risk / active states */
+.accent {
+  color: var(--accent) !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
