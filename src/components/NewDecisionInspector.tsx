@@ -7,7 +7,7 @@ import RulesPanel from './RulesPanel';
 
 interface DecisionInspectorProps {
   decision: AgentAction | null;
-  socket: Socket | null;
+  socket: Socket | any;
   agents: any[];
 }
 

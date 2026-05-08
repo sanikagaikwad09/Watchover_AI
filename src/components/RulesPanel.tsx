@@ -5,7 +5,7 @@ import type { Agent } from '../types/agent.types';
 
 interface RulesPanelProps {
   agent: Agent;
-  socket: Socket;
+  socket: Socket | any;
 }
 
 function RulesPanel({ agent, socket }: RulesPanelProps): JSX.Element {
