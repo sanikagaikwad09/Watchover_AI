@@ -32,7 +32,7 @@ export function TopBar() {
     <div className="h-14 border-b border-border dark:border-[#232326] bg-card dark:bg-[#0F0F10] flex items-center justify-between px-6">
       <div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground">MISSION CONTROL</p>
-        <h1 className="text-base font-semibold mt-0.5">ControlLayer</h1>
+        <h1 className="text-base font-semibold mt-0.5">Watchover AI</h1>
       </div>
 
       <div className="flex items-center gap-3">
