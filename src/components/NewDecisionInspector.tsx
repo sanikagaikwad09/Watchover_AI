@@ -1,14 +1,19 @@
 import { Pause, RotateCcw, GitBranch, History, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import type { Socket } from 'socket.io-client';
+import type { Agent } from '../types/agent.types';
 import type { AgentAction } from '../types/agent.types';
+import type { MockSocket } from '../services/mockSocket';
 import { useAgentStore } from '../store/agentStore';
 import RulesPanel from './RulesPanel';
+import { ConfidenceSparkline } from './ConfidenceSparkline';
+import { WhyThisMatters } from './WhyThisMatters';
+import { IntegrationBadges } from './IntegrationBadges';
 
 interface DecisionInspectorProps {
   decision: AgentAction | null;
-  socket: Socket | any;
-  agents: any[];
+  socket: Socket | MockSocket;
+  agents: Agent[];
 }
 
 export function DecisionInspector({ decision, socket, agents }: DecisionInspectorProps) {
@@ -16,6 +21,7 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
   const [redirectInstruction, setRedirectInstruction] = useState('');
   const [editedOutput, setEditedOutput] = useState('');
   const showFeedback = useAgentStore((s) => s.showFeedback);
+  const analyticsSummary = useAgentStore((s) => s.analyticsSummary);
   const selectedAgent = decision ? agents.find((agent) => agent.id === decision.agentId) ?? null : null;
 
   const handlePause = () => {
@@ -23,7 +29,6 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
     if (!selectedAgent) return;
     const eventName = selectedAgent.status === 'paused' ? 'agent:resume' : 'agent:pause';
     try {
-      console.log('[UI] Agent control clicked:', eventName, selectedAgent.id);
       socket.emit(eventName, { agentId: selectedAgent.id });
       showFeedback(selectedAgent.status === 'paused' ? 'Resume request sent...' : 'Pause request sent...', 'info');
     } catch (error) {
@@ -35,7 +40,6 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
   const handleApprove = () => {
     if (!decision || !socket) return;
     try {
-      console.log('[UI] Approve clicked:', decision.id);
       socket.emit('agent:approve', { actionId: decision.id });
       showFeedback('Approval sent...', 'success');
     } catch (error) {
@@ -47,7 +51,6 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
   const handleReject = () => {
     if (!decision || !socket) return;
     try {
-      console.log('[UI] Reject clicked:', decision.id);
       socket.emit('agent:reject', { actionId: decision.id });
       showFeedback('Rejection sent...', 'warning');
     } catch (error) {
@@ -60,7 +63,6 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
     if (!decision || !socket) return;
     try {
       const correctedOutput = editedOutput.trim() || decision.correctedOutput || decision.output;
-      console.log('[UI] Rerun clicked:', decision.id);
       socket.emit('agent:rerun', {
         actionId: decision.id,
         correctedOutput,
@@ -76,7 +78,6 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
   const handleRetry = () => {
     if (!decision || !socket) return;
     try {
-      console.log('[UI] Retry clicked:', decision.id);
       socket.emit('agent:retry', {
         actionId: decision.id,
         correctedOutput: editedOutput.trim() || undefined
@@ -91,7 +92,6 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
   const handleFallback = () => {
     if (!decision || !socket) return;
     try {
-      console.log('[UI] Fallback clicked:', decision.id);
       socket.emit('agent:fallback', {
         actionId: decision.id,
         fallbackOption: 'Escalate to manual queue'
@@ -108,7 +108,6 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
     const agent = agents.find((a) => a.id === decision.agentId);
     if (!agent) return;
     try {
-      console.log('[UI] Redirect clicked:', decision.id, agent.id);
       socket.emit('agent:redirect', {
         agentId: agent.id,
         newInstruction: redirectInstruction.trim()
@@ -188,12 +187,53 @@ export function DecisionInspector({ decision, socket, agents }: DecisionInspecto
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto no-scrollbar p-4">
         {activeTab === 'replay' && (
           <div id="replay-panel" role="tabpanel" aria-labelledby="replay-tab" className="space-y-4">
             <div>
               <h4 className="font-semibold text-sm text-slate-900 dark:text-white mb-2">What Happened</h4>
               <p className="text-sm text-slate-600 dark:text-slate-300">{decision.reasoning}</p>
+              <WhyThisMatters text={decision.businessImpact} risk={risk} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#161618] border border-slate-200 dark:border-[#232326]">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Confidence trend</p>
+                <div className="flex items-center justify-between gap-2">
+                  <ConfidenceSparkline
+                    values={decision.confidenceTrend ?? [confidencePercent - 4, confidencePercent - 2, confidencePercent - 1, confidencePercent, confidencePercent + 1, confidencePercent, confidencePercent + 2]}
+                    className={
+                      confidencePercent >= 80
+                        ? 'text-green-600'
+                        : confidencePercent >= 60
+                          ? 'text-amber-600'
+                          : 'text-red-600'
+                    }
+                  />
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{confidencePercent}%</p>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#161618] border border-slate-200 dark:border-[#232326]">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Integrations</p>
+                <IntegrationBadges integrations={decision.integrations ?? []} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#161618] border border-slate-200 dark:border-[#232326]">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Approvals today</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{analyticsSummary.approvalsToday}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#161618] border border-slate-200 dark:border-[#232326]">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Corrections made</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{analyticsSummary.correctionsMade}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#161618] border border-slate-200 dark:border-[#232326]">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Interventions prevented</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  {analyticsSummary.interventionsPrevented}
+                </p>
+              </div>
             </div>
 
             <div>

@@ -5,9 +5,9 @@ import { MOCK_AGENTS, MOCK_ACTIONS, MOCK_RULES, generateMockAction } from './moc
  * Simple event emitter implementation for browser compatibility
  */
 class SimpleEventEmitter {
-  private listeners: Map<string, Array<(...args: any[]) => void>> = new Map();
+  private listeners: Map<string, Array<(...args: unknown[]) => void>> = new Map();
 
-  on(eventName: string, listener: (...args: any[]) => void) {
+  on(eventName: string, listener: (...args: unknown[]) => void) {
     if (!this.listeners.has(eventName)) {
       this.listeners.set(eventName, []);
     }
@@ -15,7 +15,7 @@ class SimpleEventEmitter {
     return this;
   }
 
-  off(eventName: string, listener: (...args: any[]) => void) {
+  off(eventName: string, listener: (...args: unknown[]) => void) {
     if (!this.listeners.has(eventName)) return this;
     const listeners = this.listeners.get(eventName)!;
     const index = listeners.indexOf(listener);
@@ -25,8 +25,8 @@ class SimpleEventEmitter {
     return this;
   }
 
-  once(eventName: string, listener: (...args: any[]) => void) {
-    const onceWrapper = (...args: any[]) => {
+  once(eventName: string, listener: (...args: unknown[]) => void) {
+    const onceWrapper = (...args: unknown[]) => {
       listener(...args);
       this.off(eventName, onceWrapper);
     };
@@ -42,7 +42,7 @@ class SimpleEventEmitter {
     return this;
   }
 
-  protected emitBase(eventName: string, ...args: any[]) {
+  protected emitBase(eventName: string, ...args: unknown[]) {
     if (!this.listeners.has(eventName)) return false;
     const listeners = this.listeners.get(eventName)!;
     listeners.forEach((listener) => listener(...args));
@@ -115,7 +115,7 @@ export class MockSocket extends SimpleEventEmitter {
   }
 
   // Override emit to handle client -> server events
-  emit(eventName: string, ...args: any[]) {
+  emit(eventName: string, ...args: unknown[]) {
     // Handle client-side emits (requests to server)
     if (eventName === 'agent:pause') {
       const payload = args[0] as { agentId: string };

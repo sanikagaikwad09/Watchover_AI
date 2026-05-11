@@ -2,10 +2,11 @@ import type { Socket } from 'socket.io-client';
 import { useMemo, useState } from 'react';
 import { useAgentStore } from '../store/agentStore';
 import type { Agent } from '../types/agent.types';
+import type { MockSocket } from '../services/mockSocket';
 
 interface RulesPanelProps {
   agent: Agent;
-  socket: Socket | any;
+  socket: Socket | MockSocket;
 }
 
 function RulesPanel({ agent, socket }: RulesPanelProps): JSX.Element {
@@ -29,6 +30,8 @@ function RulesPanel({ agent, socket }: RulesPanelProps): JSX.Element {
     });
     setCondition('');
     setInstruction('');
+    const showFeedback = useAgentStore.getState().showFeedback;
+    showFeedback('Rule saved successfully', 'success');
   };
 
   return (

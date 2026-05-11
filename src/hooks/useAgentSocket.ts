@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { useAgentStore } from '../store/agentStore';
 import type { Agent, AgentAction, AgentRule } from '../types/agent.types';
@@ -8,6 +8,18 @@ interface PauseResponse {
   agentId: string;
   status: Agent['status'];
   success: boolean;
+}
+
+interface DashboardSocketLike {
+  connected: boolean;
+  connect: () => void;
+  disconnect: () => void;
+  removeAllListeners: () => void;
+  on: <TArgs extends unknown[]>(eventName: string, listener: (...args: TArgs) => void) => void;
+  io?: {
+    on: <TArgs extends unknown[]>(eventName: string, listener: (...args: TArgs) => void) => void;
+    off: (eventName: string) => void;
+  };
 }
 
 /**
@@ -32,16 +44,12 @@ export function useAgentSocket(): Socket | MockSocket {
   const setConnectionStatus = useAgentStore((state) => state.setConnectionStatus);
   const showFeedback = useAgentStore((state) => state.showFeedback);
   const isAuthenticated = useAgentStore((state) => state.isAuthenticated);
-  const userName = useAgentStore((state) => state.userName);
-
-  const useMockRef = useRef(false);
+  const [useMockSocket, setUseMockSocket] = useState(
+    () => import.meta.env.PROD || import.meta.env.VITE_USE_REAL_SOCKET !== 'true',
+  );
 
   const socket = useMemo(() => {
-    // Check if we should use mock mode based on environment
-    const isProduction = import.meta.env.PROD;
-
-    // If we're not in production and there's a backend, try the real socket
-    if (!isProduction) {
+    if (!useMockSocket) {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
       const realSocket = io(backendUrl, {
         transports: ['websocket'],
@@ -53,61 +61,41 @@ export function useAgentSocket(): Socket | MockSocket {
       return realSocket;
     }
 
-    // In production, default to mock mode
-    useMockRef.current = true;
-    return null as any; // Will be replaced in useEffect
-  }, []);
+    return getMockSocket();
+  }, [useMockSocket]);
 
   useEffect(() => {
-    // Only initialize socket when user is authenticated
     if (!isAuthenticated) {
       if (socket?.connected) {
         socket.disconnect();
       }
-      const mockSocket = getMockSocket();
-      if (mockSocket.connected) {
-        mockSocket.disconnect();
-      }
       return;
     }
 
-    // Determine which socket to use
-    let activeSocket: Socket | MockSocket;
+    const activeSocket = socket as DashboardSocketLike;
 
-    // If socket is null (production mode) or useMockRef is set, use mock socket
-    if (socket === null || useMockRef.current || import.meta.env.PROD) {
-      console.log('[Socket] Using demo mode with mock data');
-      activeSocket = getMockSocket();
-    } else {
-      activeSocket = socket;
-    }
-
-    // Connect when authenticated
     if (!activeSocket.connected) {
       activeSocket.connect();
     }
 
     activeSocket.on('connect', () => {
-      console.log(`[Socket] Connected as ${userName}`);
       setConnectionStatus('connected');
     });
 
-    activeSocket.on('disconnect', (reason) => {
-      console.log(`[Socket] Disconnected: ${reason}`);
+    activeSocket.on('disconnect', () => {
       setConnectionStatus('disconnected');
     });
 
-    // Handle reconnection events only for real Socket.io sockets
-    if (socket !== null && 'io' in activeSocket) {
-      activeSocket.io.on('reconnect_attempt', () => {
-        console.log('[Socket] Attempting to reconnect...');
+    const socketIo = activeSocket.io;
+
+    if (socketIo) {
+      socketIo.on('reconnect_attempt', () => {
         setConnectionStatus('reconnecting');
       });
 
-      activeSocket.io.on('reconnect_failed', () => {
-        console.log('[Socket] Reconnect failed, switching to demo mode');
-        useMockRef.current = true;
-        if (socket) socket.disconnect();
+      socketIo.on('reconnect_failed', () => {
+        setUseMockSocket(true);
+        activeSocket.disconnect();
         setConnectionStatus('disconnected');
         showFeedback('Backend unavailable. Using demo mode.', 'warning');
       });
@@ -115,26 +103,23 @@ export function useAgentSocket(): Socket | MockSocket {
 
     activeSocket.on('connect_error', (error) => {
       console.error('[Socket] Connection error:', error);
-      if (!useMockRef.current) {
-        useMockRef.current = true;
-        if (socket) socket.disconnect();
+      if (!useMockSocket) {
+        setUseMockSocket(true);
+        activeSocket.disconnect();
         setConnectionStatus('disconnected');
         showFeedback('Backend unavailable. Switching to demo mode.', 'warning');
       }
     });
 
     activeSocket.on('agents:init', (agents: Agent[]) => {
-      console.log(`[Socket] Received ${agents.length} agents`);
       setAgents(agents);
     });
 
     activeSocket.on('actions:init', (actions: AgentAction[]) => {
-      console.log(`[Socket] Received ${actions.length} initial actions`);
       setActions(actions);
     });
 
     activeSocket.on('agent:status', (payload: PauseResponse) => {
-      console.log(`[Socket] Agent status updated:`, payload);
       if (payload.success) {
         confirmPause(payload.agentId, payload.status);
       } else {
@@ -143,70 +128,58 @@ export function useAgentSocket(): Socket | MockSocket {
     });
 
     activeSocket.on('agent:update', (agent: Agent) => {
-      console.log(`[Socket] Agent updated: ${agent.name} → ${agent.status}`);
       upsertAgent(agent);
     });
 
     activeSocket.on('agent:action', (action: AgentAction) => {
-      console.log(`[Socket] New action: ${action.actionType} from ${action.agentId}`);
       addAction(action);
     });
 
     activeSocket.on('agent:action:updated', (action: AgentAction) => {
-      console.log(`[Socket] Action updated: ${action.id}`);
       upsertAction(action);
     });
 
-    activeSocket.on('agent:redirect:ack', (payload: { agentId: string; acknowledgedAt: string }) => {
-      console.log(`[Socket] Redirect acknowledged for ${payload.agentId}`);
+    activeSocket.on('agent:redirect:ack', () => {
       showFeedback('Redirect sent and acknowledged by the agent.', 'success');
     });
 
     activeSocket.on('agent:approved', (payload: { actionId: string }) => {
-      console.log(`[Socket] Action approved: ${payload.actionId}`);
       approveAction(payload.actionId);
     });
 
     activeSocket.on('agent:rejected', (payload: { actionId: string }) => {
-      console.log(`[Socket] Action rejected: ${payload.actionId}`);
       rejectAction(payload.actionId);
     });
 
     activeSocket.on('rules:update', (rules: AgentRule[]) => {
-      console.log(`[Socket] Rules updated: ${rules.length} rules`);
       setRules(rules);
     });
 
     activeSocket.on(
       'agent:rerun:result',
       (payload: { actionId: string; correctedOutput: string; append: boolean }) => {
-        console.log(`[Socket] Rerun result for action ${payload.actionId}`);
         applyRerun(payload.actionId, payload.correctedOutput, payload.append ? 'append' : 'replace');
       },
     );
 
     activeSocket.on('agent:retry:result', (payload: { actionId: string; status: AgentAction['status'] }) => {
-      console.log(`[Socket] Retry result for action ${payload.actionId}: ${payload.status}`);
       markRetry(payload.actionId, payload.status);
     });
 
     activeSocket.on('agent:fallback:result', (payload: { actionId: string; fallbackOption: string }) => {
-      console.log(`[Socket] Fallback applied to ${payload.actionId}: ${payload.fallbackOption}`);
       markFallback(payload.actionId, payload.fallbackOption);
     });
 
     return () => {
-      console.log('[Socket] Cleaning up listeners');
       activeSocket.removeAllListeners();
-      if (socket !== null && 'io' in activeSocket) {
-        activeSocket.io.off('reconnect_attempt');
-        activeSocket.io.off('reconnect_failed');
+      if (socketIo) {
+        socketIo.off('reconnect_attempt');
+        socketIo.off('reconnect_failed');
       }
     };
   }, [
     socket,
     isAuthenticated,
-    userName,
     addAction,
     applyRerun,
     confirmPause,
@@ -222,12 +195,8 @@ export function useAgentSocket(): Socket | MockSocket {
     upsertAction,
     showFeedback,
     upsertAgent,
+    useMockSocket,
   ]);
-
-  // Return the appropriate socket
-  if (socket === null || useMockRef.current || import.meta.env.PROD) {
-    return getMockSocket();
-  }
 
   return socket;
 }

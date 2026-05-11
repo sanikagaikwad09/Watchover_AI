@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import type { Agent, AgentAction, AgentRule } from '../types/agent.types';
 
+export interface DashboardNotification {
+  id: string;
+  title: string;
+  severity: 'info' | 'success' | 'warning' | 'error';
+  timestamp: string;
+  actionId?: string;
+  read: boolean;
+}
+
+export interface AnalyticsSummary {
+  approvalsToday: number;
+  correctionsMade: number;
+  interventionsPrevented: number;
+}
+
 interface AgentState {
   agents: Agent[];
   actions: AgentAction[];
@@ -14,6 +29,8 @@ interface AgentState {
   selectedActionId: string | null;
   pendingPauseRollback: Record<string, Agent['status']>;
   selectedAgentTab: 'actions' | 'rules';
+  notifications: DashboardNotification[];
+  analyticsSummary: AnalyticsSummary;
   setAgents: (agents: Agent[]) => void;
   setActions: (actions: AgentAction[]) => void;
   upsertAgent: (agent: Agent) => void;
@@ -37,6 +54,17 @@ interface AgentState {
   setConnectionStatus: (status: AgentState['connectionStatus']) => void;
   showFeedback: (message: string, tone?: AgentState['feedbackTone']) => void;
   clearFeedback: () => void;
+  addNotification: (notification: Omit<DashboardNotification, 'id' | 'timestamp' | 'read'>) => void;
+  markNotificationRead: (notificationId: string) => void;
+  markAllNotificationsRead: () => void;
+  clearNotification: (notificationId: string) => void;
+  trackEvent: (event:
+    | 'agent paused'
+    | 'rerun clicked'
+    | 'approval accepted'
+    | 'approval rejected'
+    | 'redirect submitted'
+    | 'notifications opened') => void;
   startProcessingAction: (actionId: string) => void;
   stopProcessingAction: (actionId: string) => void;
   /* Theme and auth */
@@ -61,6 +89,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   selectedActionId: null,
   pendingPauseRollback: {},
   selectedAgentTab: 'actions',
+  notifications: [],
+  analyticsSummary: {
+    approvalsToday: 0,
+    correctionsMade: 0,
+    interventionsPrevented: 0,
+  },
   setAgents: (agents) => set({ agents, hasReceivedFirstEvent: true }),
   setActions: (actions) =>
     set((state) => ({
@@ -101,6 +135,20 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             }
           : agent,
       ),
+      notifications:
+        action.status === 'failed' || action.confidence < 0.8
+          ? [
+              {
+                id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                title: `Approval required: ${action.description}`,
+                severity: 'warning' as const,
+                timestamp: new Date().toISOString(),
+                actionId: action.id,
+                read: false,
+              },
+              ...state.notifications,
+            ].slice(0, 10)
+          : state.notifications,
     }));
   },
   setRules: (rules) => set({ rules }),
@@ -141,6 +189,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         agent.id === agentId ? { ...agent, status: 'paused' } : agent,
       ),
     }));
+    get().trackEvent('agent paused');
   },
   confirmPause: (agentId, status) =>
     set((state) => {
@@ -170,6 +219,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         agents: state.agents.map((agent) =>
           agent.id === agentId ? { ...agent, status: previous } : agent,
         ),
+        notifications: [
+          {
+            id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title: 'Agent disconnect detected',
+            severity: 'error' as const,
+            timestamp: new Date().toISOString(),
+            read: false,
+          },
+          ...state.notifications,
+        ].slice(0, 10),
       };
     }),
   applyRerun: (actionId, correctedOutput, strategy) =>
@@ -191,6 +250,21 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           processingActionIds: remaining,
           feedbackMessage: 'Re-run complete. Corrected action added.',
           feedbackTone: 'success',
+          analyticsSummary: {
+            ...state.analyticsSummary,
+            correctionsMade: state.analyticsSummary.correctionsMade + 1,
+          },
+          notifications: [
+            {
+              id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              title: 'Rerun completed',
+              severity: 'success' as const,
+              timestamp: new Date().toISOString(),
+              actionId,
+              read: false,
+            },
+            ...state.notifications,
+          ].slice(0, 10),
           actions: [correctedAction, ...state.actions],
         };
       }
@@ -198,6 +272,21 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         processingActionIds: remaining,
         feedbackMessage: 'Re-run complete. Action updated.',
         feedbackTone: 'success',
+        analyticsSummary: {
+          ...state.analyticsSummary,
+          correctionsMade: state.analyticsSummary.correctionsMade + 1,
+        },
+        notifications: [
+          {
+            id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title: 'Rerun completed',
+            severity: 'success' as const,
+            timestamp: new Date().toISOString(),
+            actionId,
+            read: false,
+          },
+          ...state.notifications,
+        ].slice(0, 10),
         actions: state.actions.map((action) => (action.id === actionId ? correctedAction : action)),
       };
     }),
@@ -205,6 +294,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set((state) => ({
       feedbackMessage: status === 'done' ? 'Retry succeeded.' : 'Retry failed. Review and try fallback.',
       feedbackTone: status === 'done' ? 'success' : 'warning',
+      analyticsSummary: {
+        ...state.analyticsSummary,
+        correctionsMade: state.analyticsSummary.correctionsMade + 1,
+      },
       actions: state.actions.map((action) =>
         action.id === actionId
           ? {
@@ -234,6 +327,21 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       set((state) => ({
         feedbackMessage: 'Action approved.',
         feedbackTone: 'success',
+          analyticsSummary: {
+            ...state.analyticsSummary,
+            approvalsToday: state.analyticsSummary.approvalsToday + 1,
+          },
+          notifications: [
+            {
+              id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              title: 'Approval accepted',
+              severity: 'success' as const,
+              timestamp: new Date().toISOString(),
+              actionId,
+              read: false,
+            },
+            ...state.notifications,
+          ].slice(0, 10),
         actions: state.actions.map((action) =>
           action.id === actionId
             ? {
@@ -249,6 +357,21 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       set((state) => ({
         feedbackMessage: 'Action rejected.',
         feedbackTone: 'warning',
+        analyticsSummary: {
+          ...state.analyticsSummary,
+          interventionsPrevented: state.analyticsSummary.interventionsPrevented + 1,
+        },
+        notifications: [
+          {
+            id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title: 'Approval rejected',
+            severity: 'warning' as const,
+            timestamp: new Date().toISOString(),
+            actionId,
+            read: false,
+          },
+          ...state.notifications,
+        ].slice(0, 10),
         actions: state.actions.map((action) =>
           action.id === actionId
             ? {
@@ -264,6 +387,46 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   setConnectionStatus: (status) => set({ connectionStatus: status }),
   showFeedback: (message, tone = 'info') => set({ feedbackMessage: message, feedbackTone: tone }),
   clearFeedback: () => set({ feedbackMessage: null }),
+  addNotification: (notification) =>
+    set((state) => ({
+      notifications: [
+        {
+          ...notification,
+          id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          timestamp: new Date().toISOString(),
+          read: false,
+        },
+        ...state.notifications,
+      ].slice(0, 10),
+    })),
+  markNotificationRead: (notificationId) =>
+    set((state) => ({
+      notifications: state.notifications.map((notification) =>
+        notification.id === notificationId ? { ...notification, read: true } : notification,
+      ),
+    })),
+  markAllNotificationsRead: () =>
+    set((state) => ({
+      notifications: state.notifications.map((notification) => ({ ...notification, read: true })),
+    })),
+  clearNotification: (notificationId) =>
+    set((state) => ({
+      notifications: state.notifications.filter((notification) => notification.id !== notificationId),
+    })),
+  trackEvent: (event) =>
+    set((state) => ({
+      analyticsSummary: {
+        ...state.analyticsSummary,
+        approvalsToday:
+          event === 'approval accepted' ? state.analyticsSummary.approvalsToday + 1 : state.analyticsSummary.approvalsToday,
+        correctionsMade:
+          event === 'rerun clicked' ? state.analyticsSummary.correctionsMade + 1 : state.analyticsSummary.correctionsMade,
+        interventionsPrevented:
+          event === 'approval rejected'
+            ? state.analyticsSummary.interventionsPrevented + 1
+            : state.analyticsSummary.interventionsPrevented,
+      },
+    })),
   startProcessingAction: (actionId) =>
     set((state) => ({
       processingActionIds: state.processingActionIds.includes(actionId)

@@ -31,6 +31,4 @@ const io = new Server(server, {
 registerAgentSocket(io);
 
 const PORT = 4000;
-server.listen(PORT, () => {
-  console.log(`Agent dashboard backend running on http://localhost:${PORT}`);
-});
+server.listen(PORT);

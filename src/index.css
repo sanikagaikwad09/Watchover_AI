@@ -63,11 +63,11 @@
 
 @layer utilities {
   .bg-background {
-    background-color: hsl(var(--background) / <alpha-value>);
+    background-color: var(--background);
   }
 
   .text-foreground {
-    color: hsl(var(--foreground) / <alpha-value>);
+    color: var(--foreground);
   }
 
   .bg-card {

@@ -1,5 +1,6 @@
 import { Play, Pause } from 'lucide-react';
 import type { Agent } from '../types/agent.types';
+import { ConfidenceSparkline } from './ConfidenceSparkline';
 
 interface AgentCardProps {
   agent: Agent;
@@ -8,8 +9,9 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, isSelected, onClick }: AgentCardProps) {
-  const trustColor =
-    agent.trustScore >= 80 ? 'bg-green-600' : agent.trustScore >= 60 ? 'bg-yellow-600' : 'bg-red-600';
+  const trustTrend =
+    agent.trustTrend ?? [agent.trustScore - 4, agent.trustScore - 2, agent.trustScore - 1, agent.trustScore, agent.trustScore + 1, agent.trustScore, agent.trustScore + 2, agent.trustScore];
+  const trustColor = agent.trustScore >= 80 ? 'text-green-600' : agent.trustScore >= 60 ? 'text-yellow-600' : 'text-red-600';
 
   return (
     <button
@@ -35,13 +37,13 @@ export function AgentCard({ agent, isSelected, onClick }: AgentCardProps) {
         )}
       </div>
 
-      <div className="mt-2.5">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Trust</span>
-          <span className="text-xs font-semibold text-slate-900 dark:text-white">{Math.round(agent.trustScore)}%</span>
-        </div>
-        <div className="h-2 bg-slate-200 dark:bg-[#232326] rounded-full overflow-hidden">
-          <div className={`h-full ${trustColor} rounded-full`} style={{ width: `${agent.trustScore}%` }} />
+      <div className="mt-2.5 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Trust trend</p>
+          <div className="mt-1 flex items-center gap-2">
+            <ConfidenceSparkline values={trustTrend} className={trustColor} />
+            <span className="text-xs font-semibold text-slate-900 dark:text-white">{Math.round(agent.trustScore)}%</span>
+          </div>
         </div>
       </div>
 

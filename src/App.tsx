@@ -24,6 +24,11 @@ function App(): JSX.Element {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedActionOverride, setSelectedActionOverride] = useState<string | null>(null);
+  const activeSelectedAgentId = selectedAgentId ?? agents[0]?.id ?? null;
+  const activeSelectedActionId =
+    selectedActionOverride ||
+    (activeSelectedAgentId ? actions.find((action) => action.agentId === activeSelectedAgentId)?.id ?? null : null) ||
+    selectedActionId;
 
   // Cleanup feedback message
   useEffect(() => {
@@ -32,32 +37,10 @@ function App(): JSX.Element {
     return () => window.clearTimeout(timeout);
   }, [clearFeedback, feedbackMessage]);
 
-  // Auto-select first agent
-  useEffect(() => {
-    if (agents.length > 0 && !selectedAgentId) {
-      const firstAgent = agents[0];
-      if (firstAgent) {
-        setSelectedAgentId(firstAgent.id);
-      }
-    }
-  }, [agents, selectedAgentId]);
-
-  useEffect(() => {
-    if (!selectedAgentId) {
-      return;
-    }
-
-    const latestAgentAction = actions.find((action) => action.agentId === selectedAgentId) ?? null;
-    if (latestAgentAction && selectedActionOverride !== latestAgentAction.id) {
-      setSelectedActionOverride(latestAgentAction.id);
-      openDecisionReplay(latestAgentAction.id);
-    }
-  }, [actions, openDecisionReplay, selectedActionOverride, selectedAgentId]);
-
   // Get filtered actions
   const filteredActions = actions
     .filter((action) => {
-      if (selectedAgentId && action.agentId !== selectedAgentId) return false;
+      if (activeSelectedAgentId && action.agentId !== activeSelectedAgentId) return false;
       if (!searchQuery.trim()) return true;
       const query = searchQuery.trim().toLowerCase();
       return (
@@ -77,7 +60,6 @@ function App(): JSX.Element {
   const regularActions = filteredActions.filter((a) => !highRiskActions.includes(a));
 
   // Get selected action
-  const activeSelectedActionId = selectedActionOverride || selectedActionId;
   const selectedAction = actions.find((a) => a.id === activeSelectedActionId) || null;
 
   useEffect(() => {
@@ -106,7 +88,7 @@ function App(): JSX.Element {
 
   return (
     <div className="h-screen flex flex-col bg-background dark:bg-[#050505] text-foreground dark:text-white">
-      <TopBar />
+      <TopBar socket={socket} />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Agent Navigator */}
@@ -118,7 +100,7 @@ function App(): JSX.Element {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2">
             {agents.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-4">
                 <p>Loading agents...</p>
@@ -128,10 +110,10 @@ function App(): JSX.Element {
                 <AgentCard
                   key={agent.id}
                   agent={agent}
-                  isSelected={selectedAgentId === agent.id}
+                  isSelected={activeSelectedAgentId === agent.id}
                   onClick={() => {
-                    console.log('[UI] Agent card clicked:', agent.id);
                     setSelectedAgentId(agent.id);
+                    setSelectedActionOverride(null);
                   }}
                 />
               ))
@@ -174,7 +156,7 @@ function App(): JSX.Element {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto no-scrollbar">
             {/* Needs Attention Section */}
             {highRiskActions.length > 0 && (
               <div className="p-4 border-b border-border dark:border-[#232326] bg-card dark:bg-[#0F0F10]">
@@ -190,7 +172,6 @@ function App(): JSX.Element {
                       action={action}
                       isSelected={activeSelectedActionId === action.id}
                       onClick={() => {
-                        console.log('[UI] Action card clicked:', action.id);
                         setSelectedAgentId(action.agentId);
                         setSelectedActionOverride(action.id);
                         openDecisionReplay(action.id);
@@ -212,7 +193,6 @@ function App(): JSX.Element {
                       action={action}
                       isSelected={activeSelectedActionId === action.id}
                       onClick={() => {
-                        console.log('[UI] Action card clicked:', action.id);
                         setSelectedAgentId(action.agentId);
                         setSelectedActionOverride(action.id);
                         openDecisionReplay(action.id);

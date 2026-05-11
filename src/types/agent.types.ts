@@ -5,11 +5,14 @@ export interface Agent {
   name: string;
   status: AgentStatus;
   trustScore: number;
+  trustTrend?: number[];
   lastAction: string;
   actionsCount: number;
 }
 
 export type ActionStatus = 'pending' | 'done' | 'interrupted' | 'failed';
+
+export type IntegrationType = 'slack' | 'gmail' | 'notion' | 'github';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
@@ -48,6 +51,9 @@ export interface AgentAction {
   description: string;
   reasoning: string;
   confidence: number;
+  confidenceTrend?: number[];
+  businessImpact?: string;
+  integrations?: IntegrationType[];
   status: ActionStatus;
   decisionTrace: DecisionTraceStep[];
   output: string;

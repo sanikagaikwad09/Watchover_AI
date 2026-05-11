@@ -1,8 +1,15 @@
 import { useRef, useEffect, useState } from 'react';
 import { LogOut } from 'lucide-react';
+import type { Socket } from 'socket.io-client';
 import { useAgentStore } from '../store/agentStore';
+import type { MockSocket } from '../services/mockSocket';
+import { NotificationCenter } from './NotificationCenter';
 
-export function TopBar() {
+interface TopBarProps {
+  socket?: Socket | MockSocket;
+}
+
+export function TopBar({ socket }: TopBarProps) {
   const username = useAgentStore((s) => s.userName);
   const logout = useAgentStore((s) => s.logout);
   const toggleTheme = useAgentStore((s) => s.toggleTheme);
@@ -36,6 +43,8 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-3">
+        <NotificationCenter socket={socket} />
+
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg border border-border dark:border-[#232326] hover:bg-accent dark:hover:bg-[#161618] focus:outline-none focus:ring-2 focus:ring-slate-500 transition-colors"

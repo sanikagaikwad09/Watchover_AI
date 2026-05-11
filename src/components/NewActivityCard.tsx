@@ -1,5 +1,7 @@
 import { AlertTriangle, CheckCircle2, Clock, AlertCircle, Check, X } from 'lucide-react';
 import type { AgentAction } from '../types/agent.types';
+import { IntegrationBadges } from './IntegrationBadges';
+import { WhyThisMatters } from './WhyThisMatters';
 
 interface ActivityCardProps {
   action: AgentAction;
@@ -66,6 +68,7 @@ export function ActivityCard({ action, isSelected, onClick }: ActivityCardProps)
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-sm text-slate-900 dark:text-white line-clamp-1">{action.description}</h4>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{action.reasoning}</p>
+          <WhyThisMatters text={action.businessImpact} risk={risk} />
         </div>
         <div className="flex-shrink-0 flex flex-col items-center gap-1 mt-0.5">
           <div className="flex items-center gap-1">
@@ -78,6 +81,8 @@ export function ActivityCard({ action, isSelected, onClick }: ActivityCardProps)
           </div>
         </div>
       </div>
+
+      <IntegrationBadges integrations={action.integrations ?? []} className="mt-3" />
 
       <div className="flex items-center gap-3 mt-3 flex-wrap">
         <span className={`text-xs font-bold px-2.5 py-1 rounded ${config.badge}`}>{risk.toUpperCase()}</span>

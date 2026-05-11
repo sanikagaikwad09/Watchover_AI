@@ -5,6 +5,7 @@ export interface Agent {
   name: string;
   status: AgentStatus;
   trustScore: number;
+  trustTrend?: number[];
   lastAction: string;
   actionsCount: number;
 }

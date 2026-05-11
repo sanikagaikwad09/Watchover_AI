@@ -9,6 +9,9 @@ const descriptions = [
   'Scanning policy docs for reimbursement rules',
   'Gathering competitor pricing from recent sources',
   'Calling CRM API to sync lead ownership updates',
+  'Routing urgent customer issue to senior support',
+  'Watching production rollout for anomaly signals',
+  'Auditing recent decisions for policy compliance',
 ];
 
 const reasoningSnippets = [
@@ -25,6 +28,9 @@ const outputs = [
   'Top 5 sources summarized with key pricing deltas by competitor.',
   'Read file and extracted action items into checklist format.',
   'API call completed with 200 response and synced 14 records.',
+  'Ticket moved to senior support queue with internal notification sent.',
+  'Deployment remains healthy. Slack alert posted for engineering visibility.',
+  'Compliance review task created in Notion with audit notes attached.',
 ];
 
 const mockAgents: Agent[] = [
@@ -50,6 +56,30 @@ const mockAgents: Agent[] = [
     status: 'running',
     trustScore: 78,
     lastAction: 'Scanning latest market updates',
+    actionsCount: 0,
+  },
+  {
+    id: 'agent-support',
+    name: 'Support Triage',
+    status: 'running',
+    trustScore: 89,
+    lastAction: 'Routing customer requests to the right queue',
+    actionsCount: 0,
+  },
+  {
+    id: 'agent-deploy',
+    name: 'Deployment Watcher',
+    status: 'running',
+    trustScore: 86,
+    lastAction: 'Observing rollout status across services',
+    actionsCount: 0,
+  },
+  {
+    id: 'agent-compliance',
+    name: 'Compliance Monitor',
+    status: 'running',
+    trustScore: 91,
+    lastAction: 'Checking decisions for policy alignment',
     actionsCount: 0,
   },
 ];
